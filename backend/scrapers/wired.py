@@ -1,14 +1,21 @@
-"""Wired AI section scraper."""
+"""Wired AI — RSS + HTML scraper."""
 
-from .base import BaseScraper, make_id, classify, clean_text
+from .rss_base import RSSScraper, make_id, classify, clean_text
 from datetime import datetime, timezone
 
 
-class WiredScraper(BaseScraper):
-    name = "wired"
+class WiredScraper(RSSScraper):
+    name = "Wired"
+    scraper_type = "news"
     URL = "https://www.wired.com/tag/artificial-intelligence/"
+    rss_url = "https://www.wired.com/feed/tag/ai/latest/rss"
 
     async def scrape(self) -> list[dict]:
+        items = await self.fetch_rss()
+        if items:
+            return items[:20]
+
+        # Fallback HTML
         html = await self.fetch(self.URL)
         soup = self.soup(html)
         items = []
@@ -26,7 +33,6 @@ class WiredScraper(BaseScraper):
             if not title or len(title) < 10:
                 continue
 
-            # Skip items that just link to the section page
             path = url.replace("https://www.wired.com", "").rstrip("/")
             if not path or path == "/tag/artificial-intelligence":
                 continue
@@ -44,6 +50,7 @@ class WiredScraper(BaseScraper):
                 "url": url,
                 "source": "Wired",
                 "category": classify(title),
+                "sentiment": self._classify_sentiment(title, summary),
                 "published": published,
                 "scraped_at": datetime.now(timezone.utc).isoformat(),
             })

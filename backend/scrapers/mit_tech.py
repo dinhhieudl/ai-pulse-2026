@@ -1,14 +1,24 @@
-"""MIT Technology Review — AI section scraper."""
+"""MIT Technology Review — RSS + HTML scraper."""
 
-from .base import BaseScraper, make_id, classify, clean_text
+from .rss_base import RSSScraper, make_id, classify, clean_text
 from datetime import datetime, timezone
 
 
-class MITTechScraper(BaseScraper):
-    name = "mit_tech"
+class MITTechScraper(RSSScraper):
+    name = "MIT Technology Review"
+    scraper_type = "news"
     URL = "https://www.technologyreview.com/topic/artificial-intelligence/"
+    rss_url = "https://www.technologyreview.com/feed/"
 
     async def scrape(self) -> list[dict]:
+        items = await self.fetch_rss()
+        if items:
+            return [i for i in items if "ai" in i["title"].lower() or "artificial" in i["title"].lower()
+                    or "machine learning" in i["title"].lower() or "llm" in i["title"].lower()
+                    or "gpt" in i["title"].lower() or "robot" in i["title"].lower()
+                    or "model" in i["title"].lower() or "deepmind" in i["title"].lower()][:20] or items[:20]
+
+        # Fallback HTML
         html = await self.fetch(self.URL)
         soup = self.soup(html)
         items = []
@@ -29,11 +39,9 @@ class MITTechScraper(BaseScraper):
             if not title or len(title) < 10:
                 continue
 
-            # Resolve relative URLs
             if url and not url.startswith("http"):
                 url = f"https://www.technologyreview.com{url}"
 
-            # Skip items that just link to the homepage or section page
             if not url:
                 continue
             base = "https://www.technologyreview.com"
@@ -54,6 +62,7 @@ class MITTechScraper(BaseScraper):
                 "url": url,
                 "source": "MIT Technology Review",
                 "category": classify(title),
+                "sentiment": self._classify_sentiment(title, summary),
                 "published": published,
                 "scraped_at": datetime.now(timezone.utc).isoformat(),
             })

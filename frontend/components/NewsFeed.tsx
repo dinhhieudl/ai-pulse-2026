@@ -1,6 +1,8 @@
 "use client";
 
 import { ExternalLink, Clock, Tag } from "lucide-react";
+import SentimentBadge from "./SentimentBadge";
+import BookmarkButton from "./BookmarkButton";
 
 interface NewsItem {
   id: string;
@@ -9,6 +11,7 @@ interface NewsItem {
   url: string;
   source: string;
   category: string;
+  sentiment?: string;
   published?: string;
 }
 
@@ -24,6 +27,10 @@ const sourceColors: Record<string, string> = {
   VentureBeat: "text-blue-400",
   ArXiv: "text-red-400",
   "The Verge": "text-purple-400",
+  "The Rundown AI": "text-cyan-400",
+  "MIT Technology Review": "text-orange-400",
+  Wired: "text-pink-400",
+  "User Submitted": "text-emerald-400",
 };
 
 function timeAgo(dateStr: string): string {
@@ -93,10 +100,22 @@ export default function NewsFeed({
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <span className={cat.class}>{cat.label}</span>
-                <span className={`text-xs font-medium ${sourceColors[item.source] || "text-zinc-400"}`}>
-                  {item.source}
-                </span>
+                <SentimentBadge sentiment={item.sentiment} />
               </div>
+              <BookmarkButton
+                newsId={item.id}
+                title={item.title}
+                url={item.url}
+                source={item.source}
+                category={item.category}
+              />
+            </div>
+
+            {/* Source + Time */}
+            <div className="flex items-center gap-2 mb-2">
+              <span className={`text-xs font-medium ${sourceColors[item.source] || "text-zinc-400"}`}>
+                {item.source}
+              </span>
               {item.published && (
                 <div className="flex items-center gap-1 text-xs text-zinc-500">
                   <Clock className="w-3 h-3" />

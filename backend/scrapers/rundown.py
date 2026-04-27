@@ -1,24 +1,29 @@
-"""The Rundown AI — daily AI newsletter scraper."""
+"""The Rundown AI — RSS + HTML scraper."""
 
-from .base import BaseScraper, make_id, classify, clean_text
+from .rss_base import RSSScraper, make_id, classify, clean_text
 from datetime import datetime, timezone
-import re
 
 
-class RundownScraper(BaseScraper):
-    name = "rundown"
+class RundownScraper(RSSScraper):
+    name = "The Rundown AI"
+    scraper_type = "news"
     URL = "https://www.therundown.ai/"
+    rss_url = "https://www.therundown.ai/feed"
 
     async def scrape(self) -> list[dict]:
+        # Try RSS first
+        items = await self.fetch_rss()
+        if items:
+            return items[:20]
+
+        # Fallback to HTML
         html = await self.fetch(self.URL)
         soup = self.soup(html)
         items = []
 
-        # The Rundown uses article cards on homepage
         for article in soup.select("article, div[class*='post'], div[class*='article'], a[href*='/newsletter']"):
             title_el = article.select_one("h2, h3, h4, a[class*='title']")
             if not title_el:
-                # Try if the element itself is an <a> with text
                 if article.name == "a":
                     title = article.get_text(strip=True)
                     url = article.get("href", "")
@@ -32,14 +37,11 @@ class RundownScraper(BaseScraper):
             if not title or len(title) < 10:
                 continue
 
-            # Resolve relative URLs
             if url and not url.startswith("http"):
                 url = f"https://www.therundown.ai{url}"
 
-            # Skip items that just link to the homepage or have no article path
             if not url or url.rstrip("/") == "https://www.therundown.ai":
                 continue
-            # Must have a path beyond the root (article slug)
             path = url.replace("https://www.therundown.ai", "")
             if not path or path == "/":
                 continue
@@ -54,6 +56,7 @@ class RundownScraper(BaseScraper):
                 "url": url,
                 "source": "The Rundown AI",
                 "category": classify(title),
+                "sentiment": self._classify_sentiment(title, summary),
                 "published": "",
                 "scraped_at": datetime.now(timezone.utc).isoformat(),
             })

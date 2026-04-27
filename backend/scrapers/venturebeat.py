@@ -1,14 +1,21 @@
-"""VentureBeat AI scraper."""
+"""VentureBeat AI — RSS + HTML scraper."""
 
-from .base import BaseScraper, make_id, classify, clean_text
+from .rss_base import RSSScraper, make_id, classify, clean_text
 from datetime import datetime, timezone
 
 
-class VentureBeatScraper(BaseScraper):
-    name = "venturebeat"
+class VentureBeatScraper(RSSScraper):
+    name = "VentureBeat"
+    scraper_type = "news"
     URL = "https://venturebeat.com/category/ai/"
+    rss_url = "https://venturebeat.com/category/ai/feed/"
 
     async def scrape(self) -> list[dict]:
+        items = await self.fetch_rss()
+        if items:
+            return items[:20]
+
+        # Fallback HTML
         html = await self.fetch(self.URL)
         soup = self.soup(html)
         items = []
@@ -26,7 +33,6 @@ class VentureBeatScraper(BaseScraper):
             if not title or len(title) < 10:
                 continue
 
-            # Skip items that just link to the category page
             path = url.replace("https://venturebeat.com", "").rstrip("/")
             if not path or path == "/category/ai":
                 continue
@@ -44,6 +50,7 @@ class VentureBeatScraper(BaseScraper):
                 "url": url,
                 "source": "VentureBeat",
                 "category": classify(title),
+                "sentiment": self._classify_sentiment(title, summary),
                 "published": published,
                 "scraped_at": datetime.now(timezone.utc).isoformat(),
             })

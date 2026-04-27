@@ -1,22 +1,39 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Newspaper, Trophy, Search, Filter, RefreshCw, X, Database } from "lucide-react";
+import {
+  Newspaper, Trophy, Search, Filter, RefreshCw, X, Database,
+  GitCompareArrows, TrendingUp, Bookmark, Link2, BarChart3,
+} from "lucide-react";
 import NewsFeed from "./NewsFeed";
 import Leaderboard from "./Leaderboard";
+import ModelCompare from "./ModelCompare";
+import PriceCalculator from "./PriceCalculator";
+import TrendsChart from "./TrendsChart";
+import ProviderStats from "./ProviderStats";
+import SubmitLink from "./SubmitLink";
+import DigestView from "./DigestView";
 import { fetchNews, fetchLeaderboard, triggerScrape } from "@/lib/api";
 
-type Tab = "news" | "leaderboard";
+type Tab = "news" | "leaderboard" | "compare" | "trends" | "digest";
 
 const NEWS_SOURCES = [
   "All", "The Rundown AI", "MIT Technology Review", "Wired",
-  "VentureBeat", "ArXiv",
+  "VentureBeat", "ArXiv", "User Submitted",
 ];
 const CATEGORIES = ["All", "LLM", "Image Gen", "Robotics"];
 const LB_SOURCES = ["All", "LMSYS Chatbot Arena", "Vellum LLM Leaderboard", "HuggingFace Open LLM Leaderboard"];
 const PROVIDERS = [
   "All", "OpenAI", "Anthropic", "Google", "Xiaomi", "Meta",
   "Mistral AI", "xAI", "DeepSeek", "Alibaba", "Cohere",
+];
+
+const TABS: { id: Tab; label: string; icon: any }[] = [
+  { id: "news", label: "News Feed", icon: Newspaper },
+  { id: "leaderboard", label: "Leaderboard", icon: Trophy },
+  { id: "compare", label: "Compare", icon: GitCompareArrows },
+  { id: "trends", label: "Trends", icon: TrendingUp },
+  { id: "digest", label: "Digest", icon: BarChart3 },
 ];
 
 export default function Dashboard() {
@@ -70,7 +87,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (tab === "news") loadNews();
-    else loadLeaderboard();
+    else if (tab === "leaderboard") loadLeaderboard();
   }, [tab, loadNews, loadLeaderboard]);
 
   const handleScrape = async () => {
@@ -78,7 +95,7 @@ export default function Dashboard() {
     try {
       await triggerScrape();
       if (tab === "news") await loadNews();
-      else await loadLeaderboard();
+      else if (tab === "leaderboard") await loadLeaderboard();
     } catch (e) {
       console.error("Scrape failed:", e);
     }
@@ -89,25 +106,19 @@ export default function Dashboard() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       {/* Tab Bar + Controls */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-        <div className="flex items-center gap-2 p-1 bg-surface-1 rounded-xl border border-white/[0.06]">
-          <button
-            onClick={() => setTab("news")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border ${
-              tab === "news" ? "tab-active" : "tab-inactive"
-            }`}
-          >
-            <Newspaper className="w-4 h-4" />
-            <span>News Feed</span>
-          </button>
-          <button
-            onClick={() => setTab("leaderboard")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 border ${
-              tab === "leaderboard" ? "tab-active" : "tab-inactive"
-            }`}
-          >
-            <Trophy className="w-4 h-4" />
-            <span>Leaderboard</span>
-          </button>
+        <div className="flex items-center gap-1 p-1 bg-surface-1 rounded-xl border border-white/[0.06] flex-wrap">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 border ${
+                tab === t.id ? "tab-active" : "tab-inactive"
+              }`}
+            >
+              <t.icon className="w-4 h-4" />
+              <span className="hidden sm:inline">{t.label}</span>
+            </button>
+          ))}
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -124,130 +135,167 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Search + Filter Bar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-6">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={tab === "news" ? "Search news..." : "Search models..."}
-            className="w-full pl-10 pr-10 py-2.5 bg-surface-2 border border-white/[0.06] rounded-xl
-                       text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none
-                       focus:border-accent/40 focus:ring-1 focus:ring-accent/20 transition-all"
-          />
-          {searchQuery && (
+      {/* Search + Filter Bar (only for news/leaderboard) */}
+      {(tab === "news" || tab === "leaderboard") && (
+        <>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-6">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={tab === "news" ? "Search news..." : "Search models..."}
+                className="w-full pl-10 pr-10 py-2.5 bg-surface-2 border border-white/[0.06] rounded-xl
+                           text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none
+                           focus:border-accent/40 focus:ring-1 focus:ring-accent/20 transition-all"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-white"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
             <button
-              onClick={() => setSearchQuery("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-white"
+              onClick={() => setShowFilters(!showFilters)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium
+                         border transition-all ${
+                           showFilters
+                             ? "bg-accent/10 border-accent/30 text-accent"
+                             : "bg-surface-2 border-white/[0.06] text-muted hover:text-white"
+                         }`}
             >
-              <X className="w-4 h-4" />
+              <Filter className="w-4 h-4" />
+              Filters
             </button>
-          )}
-        </div>
+          </div>
 
-        <button
-          onClick={() => setShowFilters(!showFilters)}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium
-                     border transition-all ${
-                       showFilters
-                         ? "bg-accent/10 border-accent/30 text-accent"
-                         : "bg-surface-2 border-white/[0.06] text-muted hover:text-white"
-                     }`}
-        >
-          <Filter className="w-4 h-4" />
-          Filters
-        </button>
-      </div>
-
-      {/* Filter Chips */}
-      {showFilters && (
-        <div className="space-y-3 mb-6 animate-fade-in">
-          {tab === "news" ? (
-            <>
-              {/* Category filters */}
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-semibold mr-1">Category</span>
-                {CATEGORIES.map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setSelectedCategory(cat)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                      selectedCategory === cat
-                        ? "bg-accent/15 border-accent/30 text-accent"
-                        : "bg-surface-3/50 border-white/5 text-zinc-400 hover:text-white hover:bg-surface-3"
-                    }`}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
-              {/* Source filters */}
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-semibold mr-1">Source</span>
-                {NEWS_SOURCES.map((src) => (
-                  <button
-                    key={src}
-                    onClick={() => setSelectedNewsSource(src)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                      selectedNewsSource === src
-                        ? "bg-accent/15 border-accent/30 text-accent"
-                        : "bg-surface-3/50 border-white/5 text-zinc-400 hover:text-white hover:bg-surface-3"
-                    }`}
-                  >
-                    {src}
-                  </button>
-                ))}
-              </div>
-            </>
-          ) : (
-            <>
-              {/* Provider filters */}
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-semibold mr-1">Provider</span>
-                {PROVIDERS.map((prov) => (
-                  <button
-                    key={prov}
-                    onClick={() => setSelectedProvider(prov)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                      selectedProvider === prov
-                        ? "bg-accent/15 border-accent/30 text-accent"
-                        : "bg-surface-3/50 border-white/5 text-zinc-400 hover:text-white hover:bg-surface-3"
-                    }`}
-                  >
-                    {prov}
-                  </button>
-                ))}
-              </div>
-              {/* Leaderboard source filters */}
-              <div className="flex flex-wrap items-center gap-2">
-                <Database className="w-3 h-3 text-zinc-500 mr-1" />
-                <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-semibold mr-1">Source</span>
-                {LB_SOURCES.map((src) => (
-                  <button
-                    key={src}
-                    onClick={() => setSelectedLbSource(src)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                      selectedLbSource === src
-                        ? "bg-accent/15 border-accent/30 text-accent"
-                        : "bg-surface-3/50 border-white/5 text-zinc-400 hover:text-white hover:bg-surface-3"
-                    }`}
-                  >
-                    {src === "All" ? "All" : src.replace(" Chatbot Arena", "").replace(" LLM Leaderboard", "").replace(" Open LLM Leaderboard", "")}
-                  </button>
-                ))}
-              </div>
-            </>
+          {/* Filter Chips */}
+          {showFilters && (
+            <div className="space-y-3 mb-6 animate-fade-in">
+              {tab === "news" ? (
+                <>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-semibold mr-1">Category</span>
+                    {CATEGORIES.map((cat) => (
+                      <button
+                        key={cat}
+                        onClick={() => setSelectedCategory(cat)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                          selectedCategory === cat
+                            ? "bg-accent/15 border-accent/30 text-accent"
+                            : "bg-surface-3/50 border-white/5 text-zinc-400 hover:text-white hover:bg-surface-3"
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-semibold mr-1">Source</span>
+                    {NEWS_SOURCES.map((src) => (
+                      <button
+                        key={src}
+                        onClick={() => setSelectedNewsSource(src)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                          selectedNewsSource === src
+                            ? "bg-accent/15 border-accent/30 text-accent"
+                            : "bg-surface-3/50 border-white/5 text-zinc-400 hover:text-white hover:bg-surface-3"
+                        }`}
+                      >
+                        {src}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-semibold mr-1">Provider</span>
+                    {PROVIDERS.map((prov) => (
+                      <button
+                        key={prov}
+                        onClick={() => setSelectedProvider(prov)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                          selectedProvider === prov
+                            ? "bg-accent/15 border-accent/30 text-accent"
+                            : "bg-surface-3/50 border-white/5 text-zinc-400 hover:text-white hover:bg-surface-3"
+                        }`}
+                      >
+                        {prov}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Database className="w-3 h-3 text-zinc-500 mr-1" />
+                    <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-semibold mr-1">Source</span>
+                    {LB_SOURCES.map((src) => (
+                      <button
+                        key={src}
+                        onClick={() => setSelectedLbSource(src)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                          selectedLbSource === src
+                            ? "bg-accent/15 border-accent/30 text-accent"
+                            : "bg-surface-3/50 border-white/5 text-zinc-400 hover:text-white hover:bg-surface-3"
+                        }`}
+                      >
+                        {src === "All" ? "All" : src.replace(" Chatbot Arena", "").replace(" LLM Leaderboard", "").replace(" Open LLM Leaderboard", "")}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
           )}
-        </div>
+        </>
       )}
 
       {/* Content */}
-      {tab === "news" ? (
-        <NewsFeed items={newsItems} loading={loading} />
-      ) : (
-        <Leaderboard items={leaderboardItems} loading={loading} />
+      {tab === "news" && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-2">
+              <NewsFeed items={newsItems} loading={loading} />
+            </div>
+            <div className="space-y-4">
+              <SubmitLink />
+              <DigestView />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tab === "leaderboard" && (
+        <div className="space-y-4">
+          <Leaderboard items={leaderboardItems} loading={loading} />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <PriceCalculator />
+            <ProviderStats />
+          </div>
+        </div>
+      )}
+
+      {tab === "compare" && <ModelCompare />}
+
+      {tab === "trends" && (
+        <div className="space-y-4">
+          <TrendsChart />
+          <ProviderStats />
+        </div>
+      )}
+
+      {tab === "digest" && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <DigestView />
+          <div className="space-y-4">
+            <SubmitLink />
+            <ProviderStats />
+          </div>
+        </div>
       )}
     </div>
   );
@@ -262,6 +310,7 @@ const DEMO_NEWS = [
     url: "https://openai.com/index/gpt-5-5",
     source: "The Rundown AI",
     category: "llm",
+    sentiment: "launch",
     published: "2026-04-25",
   },
   {
@@ -271,6 +320,7 @@ const DEMO_NEWS = [
     url: "https://venturebeat.com/ai/xiaomi-mimo-v2-pro-efficient-reasoning-edge",
     source: "VentureBeat",
     category: "llm",
+    sentiment: "launch",
     published: "2026-04-24",
   },
   {
@@ -280,6 +330,7 @@ const DEMO_NEWS = [
     url: "https://www.technologyreview.com/2026/04/23/google-veo-3-photorealistic-4k-video",
     source: "MIT Technology Review",
     category: "image_gen",
+    sentiment: "launch",
     published: "2026-04-23",
   },
   {
@@ -289,6 +340,7 @@ const DEMO_NEWS = [
     url: "https://www.wired.com/story/figure-03-humanoid-robot-kitchen-tasks",
     source: "Wired",
     category: "robotics",
+    sentiment: "research",
     published: "2026-04-22",
   },
   {
@@ -298,6 +350,7 @@ const DEMO_NEWS = [
     url: "https://arxiv.org/abs/2604.12345",
     source: "ArXiv",
     category: "llm",
+    sentiment: "research",
     published: "2026-04-21",
   },
   {
@@ -307,11 +360,11 @@ const DEMO_NEWS = [
     url: "https://www.therundown.ai/p/stable-diffusion-5-open-source",
     source: "The Rundown AI",
     category: "image_gen",
+    sentiment: "launch",
     published: "2026-04-20",
   },
 ];
 
-// Demo leaderboard when backend is unreachable
 const DEMO_LEADERBOARD = [
   { rank: 1, model: "GPT-5.5", provider: "OpenAI", mmlu_score: 93.2, elo_score: 1352, arena_elo: 1352, pricing_input: "$15.00", pricing_output: "$45.00", speed_tps: 85, source: "Combined", released: "2026-03", notes: "Multimodal, native tool use, best overall" },
   { rank: 2, model: "Claude 4.7 Opus", provider: "Anthropic", mmlu_score: 92.8, elo_score: 1348, arena_elo: 1348, pricing_input: "$20.00", pricing_output: "$60.00", speed_tps: 62, source: "Combined", released: "2026-02", notes: "200K context, safety-first, best reasoning" },
