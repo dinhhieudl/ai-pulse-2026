@@ -2,6 +2,7 @@
 
 from .base import BaseScraper, make_id, classify, clean_text
 from datetime import datetime, timezone
+import re
 
 
 class RundownScraper(BaseScraper):
@@ -31,17 +32,26 @@ class RundownScraper(BaseScraper):
             if not title or len(title) < 10:
                 continue
 
+            # Resolve relative URLs
             if url and not url.startswith("http"):
                 url = f"https://www.therundown.ai{url}"
+
+            # Skip items that just link to the homepage or have no article path
+            if not url or url.rstrip("/") == "https://www.therundown.ai":
+                continue
+            # Must have a path beyond the root (article slug)
+            path = url.replace("https://www.therundown.ai", "")
+            if not path or path == "/":
+                continue
 
             summary_el = article.select_one("p, div[class*='excerpt'], div[class*='desc']")
             summary = self.extract_text(summary_el, 280)
 
             items.append({
-                "id": make_id(url or title),
+                "id": make_id(url),
                 "title": title,
                 "summary": summary or f"The Rundown AI: {title}",
-                "url": url or "https://www.therundown.ai",
+                "url": url,
                 "source": "The Rundown AI",
                 "category": classify(title),
                 "published": "",

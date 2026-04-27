@@ -26,6 +26,11 @@ class VentureBeatScraper(BaseScraper):
             if not title or len(title) < 10:
                 continue
 
+            # Skip items that just link to the category page
+            path = url.replace("https://venturebeat.com", "").rstrip("/")
+            if not path or path == "/category/ai":
+                continue
+
             summary_el = article.select_one("p.article-excerpt, p.excerpt, div.entry-content p, p[class*='desc']")
             summary = self.extract_text(summary_el, 280)
 

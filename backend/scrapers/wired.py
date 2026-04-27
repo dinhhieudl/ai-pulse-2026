@@ -26,6 +26,11 @@ class WiredScraper(BaseScraper):
             if not title or len(title) < 10:
                 continue
 
+            # Skip items that just link to the section page
+            path = url.replace("https://www.wired.com", "").rstrip("/")
+            if not path or path == "/tag/artificial-intelligence":
+                continue
+
             summary_el = article.select_one("p, div[class*='desc'], div[class*='excerpt']")
             summary = self.extract_text(summary_el, 280)
 

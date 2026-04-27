@@ -29,8 +29,17 @@ class MITTechScraper(BaseScraper):
             if not title or len(title) < 10:
                 continue
 
+            # Resolve relative URLs
             if url and not url.startswith("http"):
                 url = f"https://www.technologyreview.com{url}"
+
+            # Skip items that just link to the homepage or section page
+            if not url:
+                continue
+            base = "https://www.technologyreview.com"
+            path = url.replace(base, "").rstrip("/")
+            if not path or path == "/topic/artificial-intelligence":
+                continue
 
             summary_el = article.select_one("p, div[class*='desc'], div[class*='excerpt'], span[class*='dek']")
             summary = self.extract_text(summary_el, 280)
@@ -39,10 +48,10 @@ class MITTechScraper(BaseScraper):
             published = time_el.get("datetime", "") if time_el else ""
 
             items.append({
-                "id": make_id(url or title),
+                "id": make_id(url),
                 "title": title,
                 "summary": summary or f"MIT Technology Review: {title}",
-                "url": url or "https://www.technologyreview.com",
+                "url": url,
                 "source": "MIT Technology Review",
                 "category": classify(title),
                 "published": published,
