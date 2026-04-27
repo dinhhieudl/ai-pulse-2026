@@ -90,11 +90,14 @@ export default function NewsFeed({
         return (
           <a
             key={item.id}
-            href={item.url}
-            target="_blank"
+            href={item.url || undefined}
+            target={item.url ? "_blank" : undefined}
             rel="noopener noreferrer"
-            className="glass-card p-5 group animate-slide-up flex flex-col"
+            className={`glass-card p-5 group animate-slide-up flex flex-col ${item.url ? "" : "cursor-default"}`}
             style={{ animationDelay: `${idx * 40}ms` }}
+            onClick={(e) => {
+              if (!item.url) e.preventDefault();
+            }}
           >
             {/* Meta row */}
             <div className="flex items-center justify-between mb-3">
