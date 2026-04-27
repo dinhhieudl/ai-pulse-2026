@@ -10,9 +10,37 @@ from datetime import datetime, timedelta
 router = APIRouter()
 
 
-@router.get("/daily")
+@router.get(
+    "/daily",
+    summary="Daily news digest",
+    description="Generate a digest of top news articles and top-5 leaderboard models for a given day.",
+    responses={
+        200: {
+            "description": "Daily digest",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "date": "2026-04-25",
+                        "news": [
+                            {
+                                "title": "OpenAI Announces GPT-5.5",
+                                "url": "https://openai.com/index/gpt-5-5",
+                                "source": "The Rundown AI",
+                                "category": "llm",
+                                "sentiment": "launch",
+                            }
+                        ],
+                        "top_models": [
+                            {"rank": 1, "model": "GPT-5.5", "provider": "OpenAI", "elo_score": 1352}
+                        ],
+                    }
+                }
+            },
+        }
+    },
+)
 async def daily_digest(
-    date: str = Query(None, description="YYYY-MM-DD, defaults to today"),
+    date: str = Query(None, description="Date in YYYY-MM-DD format (defaults to today)", examples=["2026-04-25"]),
     session: AsyncSession = Depends(get_session),
 ):
     """Generate a digest of top news for a given day."""
@@ -28,7 +56,6 @@ async def daily_digest(
     )
     news = result.scalars().all()
 
-    # Get top leaderboard entries
     lb_result = await session.execute(
         select(LeaderboardEntryDB)
         .order_by(LeaderboardEntryDB.rank)
@@ -60,7 +87,26 @@ async def daily_digest(
     }
 
 
-@router.get("/weekly")
+@router.get(
+    "/weekly",
+    summary="Weekly news digest",
+    description="Generate a digest of the past 7 days, including article count breakdown by category.",
+    responses={
+        200: {
+            "description": "Weekly digest",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "period": "2026-04-18 to 2026-04-25",
+                        "total_articles": 42,
+                        "by_category": {"llm": 30, "image_gen": 8, "robotics": 4},
+                        "news": [],
+                    }
+                }
+            },
+        }
+    },
+)
 async def weekly_digest(
     session: AsyncSession = Depends(get_session),
 ):
@@ -75,7 +121,6 @@ async def weekly_digest(
     )
     news = result.scalars().all()
 
-    # Category breakdown
     cat_result = await session.execute(
         select(NewsItemDB.category, func.count(NewsItemDB.id))
         .where(NewsItemDB.created_at >= cutoff)
@@ -100,9 +145,26 @@ async def weekly_digest(
     }
 
 
-@router.get("/telegram")
+@router.get(
+    "/telegram",
+    summary="Telegram-formatted digest",
+    description="Generate a plain-text digest optimized for Telegram messages. "
+                "Includes top news with emoji sentiment indicators and top-3 models.",
+    responses={
+        200: {
+            "description": "Telegram-ready text",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "text": "🤖 AI Pulse — 2026-04-25\n\n📰 Top News:\n🚀 OpenAI Announces GPT-5.5\n   https://openai.com/...\n\n🏆 Top Models:\n  #1 GPT-5.5 (OpenAI) — ELO: 1352"
+                    }
+                }
+            },
+        }
+    },
+)
 async def telegram_digest(
-    format: str = Query("short", description="short or full"),
+    format: str = Query("short", description="short (5 items) or full (10 items)"),
     session: AsyncSession = Depends(get_session),
 ):
     """Generate a Telegram-friendly text digest."""

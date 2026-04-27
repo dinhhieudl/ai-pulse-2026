@@ -1,6 +1,6 @@
 """User Links API — submit and manage user-contributed articles."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from db import get_session
@@ -22,9 +22,37 @@ class UserLinkCreate(BaseModel):
     category: Optional[str] = None
 
 
-@router.get("/")
+@router.get(
+    "/",
+    summary="List user-submitted links",
+    description="Return user-submitted article links, filtered by status.",
+    responses={
+        200: {
+            "description": "List of user-submitted links",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "items": [
+                            {
+                                "id": 1,
+                                "url": "https://example.com/ai-article",
+                                "title": "New AI Breakthrough",
+                                "summary": "Researchers achieved...",
+                                "source": "User Submitted",
+                                "category": "llm",
+                                "sentiment": "neutral",
+                                "status": "approved",
+                                "created_at": "2026-04-25 12:00:00",
+                            }
+                        ]
+                    }
+                }
+            },
+        }
+    },
+)
 async def list_user_links(
-    status: str = "approved",
+    status: str = Query("approved", description="Filter by status: pending, approved, rejected"),
     session: AsyncSession = Depends(get_session),
 ):
     result = await session.execute(
@@ -51,7 +79,23 @@ async def list_user_links(
     }
 
 
-@router.post("/")
+@router.post(
+    "/",
+    summary="Submit article link",
+    description="Submit a URL to the news feed. If title/summary are not provided, "
+                "they are auto-fetched from the page's `<title>` and `<meta description>` tags. "
+                "The article is immediately added to the news feed with status=approved.",
+    responses={
+        200: {
+            "description": "Link submitted and added to news feed",
+            "content": {
+                "application/json": {
+                    "example": {"status": "ok", "id": 1, "title": "Auto-fetched title"}
+                }
+            },
+        }
+    },
+)
 async def submit_link(data: UserLinkCreate, session: AsyncSession = Depends(get_session)):
     """Submit a URL. Auto-fetches metadata if title/summary not provided."""
     title = data.title or ""
@@ -68,12 +112,10 @@ async def submit_link(data: UserLinkCreate, session: AsyncSession = Depends(get_
                 resp.raise_for_status()
                 html = resp.text
 
-                # Extract title from <title> tag
                 title_match = re.search(r"<title[^>]*>(.*?)</title>", html, re.IGNORECASE | re.DOTALL)
                 if title_match:
                     title = title_match.group(1).strip()[:200]
 
-                # Extract meta description
                 desc_match = re.search(
                     r'<meta[^>]*name=["\']description["\'][^>]*content=["\'](.*?)["\']',
                     html, re.IGNORECASE,
@@ -81,7 +123,6 @@ async def submit_link(data: UserLinkCreate, session: AsyncSession = Depends(get_
                 if desc_match:
                     summary = desc_match.group(1).strip()[:300]
 
-                # Extract og:title if title still empty
                 if not title:
                     og_match = re.search(
                         r'<meta[^>]*property=["\']og:title["\'][^>]*content=["\'](.*?)["\']',
@@ -104,7 +145,6 @@ async def submit_link(data: UserLinkCreate, session: AsyncSession = Depends(get_
     )
     session.add(link)
 
-    # Also add to news feed
     news_item = NewsItemDB(
         id=make_id(data.url),
         title=title,

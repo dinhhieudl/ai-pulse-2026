@@ -6,13 +6,46 @@ from models import LEADERBOARD_DB
 router = APIRouter()
 
 
-@router.get("/")
+@router.get(
+    "/",
+    summary="List model leaderboard",
+    description="Return AI model rankings aggregated from LMSYS Chatbot Arena, Vellum LLM Leaderboard, "
+                "and HuggingFace Open LLM Leaderboard. Includes ELO scores, MMLU benchmarks, pricing, and speed.",
+    responses={
+        200: {
+            "description": "Leaderboard entries with optional filtering",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "total": 10,
+                        "items": [
+                            {
+                                "rank": 1,
+                                "model": "GPT-5.5",
+                                "provider": "OpenAI",
+                                "mmlu_score": 93.2,
+                                "elo_score": 1352,
+                                "arena_elo": 1352,
+                                "pricing_input": "$15.00",
+                                "pricing_output": "$45.00",
+                                "speed_tps": 85,
+                                "source": "Combined",
+                                "released": "2026-03",
+                                "notes": "Multimodal, native tool use",
+                            }
+                        ],
+                    }
+                }
+            },
+        }
+    },
+)
 def get_leaderboard(
-    provider: str = Query(None, description="Filter by provider"),
-    source: str = Query(None, description="Filter by source: LMSYS, Vellum, HuggingFace"),
-    q: str = Query(None, description="Search model name"),
-    sort_by: str = Query("rank", description="Sort: rank, mmlu_score, elo_score, pricing_input"),
-    order: str = Query("asc", description="asc or desc"),
+    provider: str = Query(None, description="Filter by provider name", examples=["OpenAI"]),
+    source: str = Query(None, description="Filter by data source", examples=["LMSYS Chatbot Arena"]),
+    q: str = Query(None, description="Search model name", examples=["GPT"]),
+    sort_by: str = Query("rank", description="Sort field: rank, mmlu_score, elo_score, arena_elo, speed_tps, model"),
+    order: str = Query("asc", description="Sort order: asc or desc"),
 ):
     """Return model leaderboard with multi-source filtering."""
     items = list(LEADERBOARD_DB)
@@ -36,15 +69,15 @@ def get_leaderboard(
     return {"total": len(items), "items": items}
 
 
-@router.get("/providers")
+@router.get("/providers", summary="List all model providers")
 def get_providers():
-    """List all unique providers."""
+    """Return a sorted list of unique provider names."""
     providers = list({i["provider"] for i in LEADERBOARD_DB})
     return {"providers": sorted(providers)}
 
 
-@router.get("/sources")
+@router.get("/sources", summary="List all leaderboard data sources")
 def get_sources():
-    """List all leaderboard data sources."""
+    """Return a sorted list of unique leaderboard data source names."""
     sources = list({i.get("source", "Unknown") for i in LEADERBOARD_DB})
     return {"sources": sorted(sources)}
