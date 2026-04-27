@@ -22,12 +22,14 @@ export async function fetchNews(params: {
 
 export async function fetchLeaderboard(params: {
   provider?: string;
+  source?: string;
   q?: string;
   sort_by?: string;
   order?: string;
 }) {
   const searchParams = new URLSearchParams();
   if (params.provider) searchParams.set("provider", params.provider);
+  if (params.source) searchParams.set("source", params.source);
   if (params.q) searchParams.set("q", params.q);
   if (params.sort_by) searchParams.set("sort_by", params.sort_by);
   if (params.order) searchParams.set("order", params.order);
